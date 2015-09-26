@@ -188,13 +188,14 @@ func guessTimestamp(ts int) []Guess {
 			good = -100
 		}
 		dstr = pref + dstr
-		var additional []string
+		var tzs, cal, additional []string
 		if wanttzs {
-			additional = append(additional, differentTZs(t)...)
+			tzs = differentTZs(t)
 		}
 		if wantcal {
-			additional = append(additional, calendar(t)...)
+			cal = calendar(t)
 		}
+		additional = sideBySide(cal, tzs)
 		g := Guess{
 			meaning:    t.String(),
 			comment:    dstr,
@@ -256,6 +257,36 @@ func calendar(t time.Time) []string {
 		lines = append(lines, line)
 	}
 	return lines
+}
+
+func sideBySide(left, right []string) []string {
+	maxlen := 0
+	for _, l := range left {
+		if len(l) > maxlen {
+			maxlen = len(l)
+		}
+	}
+	if maxlen == 0 {
+		return right
+	}
+	lines := len(left)
+	if len(right) > lines {
+		lines = len(right)
+	}
+	out := make([]string, lines)
+	for i, _ := range out {
+		if i >= len(right) {
+			out[i] = left[i]
+			continue
+		}
+		l := ""
+		if i < len(left) {
+			l = left[i]
+		}
+		spaces := 4 + maxlen - len(l)
+		out[i] = l + strings.Repeat(" ", spaces) + right[i]
+	}
+	return out
 }
 
 func guess(s string) []Guess {
