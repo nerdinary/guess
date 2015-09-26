@@ -13,6 +13,7 @@ import (
 
 var (
 	debug         = flag.Bool("debug", false, "Trace program execution")
+	verbose       = flag.Bool("verbose", false, "Print more information")
 	printUnlikely = flag.Bool("unlikely", false, "Also show unlikely matches")
 	sortGuesses   = flag.Bool("sort", true, "Sort guesses by likeliness")
 )
@@ -28,6 +29,7 @@ func trace(s string, args ...interface{}) {
 type Guess struct {
 	meaning, comment string
 	additional       []string
+	source           string
 	goodness         int
 }
 
@@ -41,13 +43,16 @@ func (g *Guess) String() string {
 		c = fmt.Sprintf(" (%s)", g.comment)
 	}
 	if g.additional != nil {
-		var s string
+		a = "\n"
 		for _, l := range g.additional {
-			s = fmt.Sprintf("%s  %s\n", s, l)
+			a = a + "    " + l + "\n"
 		}
-		a = fmt.Sprintf("\nadditional\n%s", s)
 	}
-	return fmt.Sprintf("%s%s%s   [goodness: %d]", m, c, a, g.goodness)
+	v := ""
+	if *verbose {
+		v = fmt.Sprintf("[goodness: %d, source: %s]\n", g.goodness, g.source)
+	}
+	return v + m + c + a
 }
 
 type ByGoodness []Guess
@@ -55,6 +60,10 @@ type ByGoodness []Guess
 func (gs ByGoodness) Len() int           { return len(gs) }
 func (gs ByGoodness) Less(i, j int) bool { return gs[i].goodness > gs[j].goodness }
 func (gs ByGoodness) Swap(i, j int)      { gs[i], gs[j] = gs[j], gs[i] }
+
+// TODO: It might be interesting to also define a type GuessGroup []Guess, and
+// then sort within the group, and sort a []GuessGroup collection by e.g.
+// maximum element or sum of guesses.
 
 func interpret(s string) []Guesser {
 	if n, err := strconv.Atoi(s); err == nil {
@@ -104,7 +113,7 @@ func guessByteSize(n int) []Guess {
 		default:
 			good = -10
 		}
-		gs = append(gs, Guess{meaning: fmt.Sprintf("%.1f %s", q, u.symbol), goodness: good})
+		gs = append(gs, Guess{meaning: fmt.Sprintf("%.1f %s", q, u.symbol), goodness: good, source: "byte-sized unit"})
 	}
 	trace("guessBytesSize: %+v", gs)
 	return gs
@@ -127,27 +136,39 @@ func guessTimestamp(ts int) []Guess {
 			suff = "ago"
 			d = now.Sub(t)
 		}
+		// truncate sub-second part of duration because it hurts readability
+		subms := d.Nanoseconds() % 1000000000
+		d -= time.Duration(subms) * time.Nanosecond
 		return d, fmt.Sprintf("%s %s", d.String(), suff)
 	}
 
-	tries := []time.Time{time.Unix(int64(ts), 0), time.Unix(0, int64(ts))}
-	for _, t := range tries {
+	tries := []struct {
+		ts  time.Time
+		src string
+	}{
+		{time.Unix(int64(ts), 0), "timestamp (seconds)"},
+		{time.Unix(0, 1000000*int64(ts)), "timestamp (milliseconds)"},
+		{time.Unix(0, 1000*int64(ts)), "timestamp (microseconds)"},
+		{time.Unix(0, int64(ts)), "timestamp (nanoseconds)"},
+	}
+	for _, i := range tries {
+		t := i.ts
 		d, dstr := delta(t)
 		pref := ""
 		good := 0
 		wantcal := false
 		switch {
 		case d < time.Minute:
-			pref = "this minute, "
+			pref = "within the minute, "
 			good = 200
 		case d < time.Hour:
-			pref = "this hour, "
+			pref = "within the hour, "
 			good = 180
 		case d < 24*time.Hour:
-			pref = "this day, "
+			pref = "within the day, "
 			good = 150
 		case d < 7*24*time.Hour:
-			pref = "this week, "
+			pref = "within the week, "
 			good = 120
 			wantcal = true
 		case d < 365*24*time.Hour:
@@ -161,7 +182,14 @@ func guessTimestamp(ts int) []Guess {
 		if wantcal {
 			cal = calendar(t)
 		}
-		gs = append(gs, Guess{meaning: t.String(), comment: dstr, additional: cal, goodness: good})
+		g := Guess{
+			meaning:    t.String(),
+			comment:    dstr,
+			additional: cal,
+			goodness:   good,
+			source:     i.src,
+		}
+		gs = append(gs, g)
 	}
 	trace("guessTimestamp: %+v", gs)
 	return gs
