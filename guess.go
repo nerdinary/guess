@@ -219,7 +219,7 @@ func guess(s string) []Guess {
 }
 
 func usage() {
-	fmt.Println("Usage: %s <string-to-guess>", os.Args[0])
+	fmt.Printf("Usage: %s <string-to-guess>\n", os.Args[0])
 }
 
 func main() {
