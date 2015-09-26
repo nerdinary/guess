@@ -131,16 +131,21 @@ func guessTimestamp(ts int) []Guess {
 	tries := []time.Time{time.Unix(int64(ts), 0), time.Unix(0, int64(ts))}
 	for _, t := range tries {
 		d, dstr := delta(t)
+		pref := ""
 		good := 0
 		wantcal := false
 		switch {
 		case d < time.Minute:
+			pref = "this minute, "
 			good = 200
 		case d < time.Hour:
+			pref = "this hour, "
 			good = 180
 		case d < 24*time.Hour:
+			pref = "this day, "
 			good = 150
 		case d < 7*24*time.Hour:
+			pref = "this week, "
 			good = 120
 			wantcal = true
 		case d < 365*24*time.Hour:
@@ -149,6 +154,7 @@ func guessTimestamp(ts int) []Guess {
 		default:
 			good = -100
 		}
+		dstr = pref + dstr
 		var cal []string
 		if wantcal {
 			cal = calendar(t)
