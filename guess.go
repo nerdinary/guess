@@ -217,6 +217,14 @@ func differentTZs(t time.Time) []string {
 	return lines
 }
 
+// Function calendar prints an ASCII art calendar for the given timestamp `t`, which looks like this:
+//       September 2015
+//    Mo Tu We Th Fr Sa Su
+//        1  2  3  4  5  6
+//     7  8  9 10 11 12 13
+//    14 15 16 17 18 19 20
+//    21 22 23 24 25 26 27
+//    28 29 30
 func calendar(t time.Time) []string {
 	lines := []string{
 		fmt.Sprintf("%s%s %d", strings.Repeat(" ", (20-(len(t.Month().String())+1+4))/2), t.Month(), t.Year()),
