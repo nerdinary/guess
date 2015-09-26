@@ -16,6 +16,11 @@ var (
 	verbose       = flag.Bool("verbose", false, "Print more information")
 	printUnlikely = flag.Bool("unlikely", false, "Also show unlikely matches")
 	sortGuesses   = flag.Bool("sort", true, "Sort guesses by likeliness")
+	timezones     = flag.String("timezones", "UTC,Local", "Timezones that to convert to/from for timestamps and dates")
+)
+
+var (
+	TZs []*time.Location
 )
 
 var Trace *log.Logger
@@ -157,19 +162,24 @@ func guessTimestamp(ts int) []Guess {
 		pref := ""
 		good := 0
 		wantcal := false
+		wanttzs := false
 		switch {
 		case d < time.Minute:
 			pref = "within the minute, "
 			good = 200
+			wanttzs = true
 		case d < time.Hour:
 			pref = "within the hour, "
 			good = 180
+			wanttzs = true
 		case d < 24*time.Hour:
 			pref = "within the day, "
 			good = 150
+			wanttzs = true
 		case d < 7*24*time.Hour:
 			pref = "within the week, "
 			good = 120
+			wanttzs = true
 			wantcal = true
 		case d < 365*24*time.Hour:
 			good = 20
@@ -178,14 +188,17 @@ func guessTimestamp(ts int) []Guess {
 			good = -100
 		}
 		dstr = pref + dstr
-		var cal []string
+		var additional []string
+		if wanttzs {
+			additional = append(additional, differentTZs(t)...)
+		}
 		if wantcal {
-			cal = calendar(t)
+			additional = append(additional, calendar(t)...)
 		}
 		g := Guess{
 			meaning:    t.String(),
 			comment:    dstr,
-			additional: cal,
+			additional: additional,
 			goodness:   good,
 			source:     i.src,
 		}
@@ -193,6 +206,14 @@ func guessTimestamp(ts int) []Guess {
 	}
 	trace("guessTimestamp: %+v", gs)
 	return gs
+}
+
+func differentTZs(t time.Time) []string {
+	var lines []string
+	for _, loc := range TZs {
+		lines = append(lines, t.In(loc).String())
+	}
+	return lines
 }
 
 func calendar(t time.Time) []string {
@@ -255,6 +276,16 @@ func main() {
 	Trace = log.New(os.Stderr, "TRACE: ", log.LstdFlags)
 
 	flag.Parse()
+
+	if *timezones != "" {
+		for _, tz := range strings.Split(*timezones, ",") {
+			loc, err := time.LoadLocation(tz)
+			if err != nil {
+				log.Fatalf("Cannot find time zone: %s", err)
+			}
+			TZs = append(TZs, loc)
+		}
+	}
 
 	input := flag.Arg(0)
 	if input == "" {
