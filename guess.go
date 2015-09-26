@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"strconv"
 	"time"
 )
@@ -34,8 +35,14 @@ func (g *Guess) String() string {
 	if g.additional != "" {
 		a = fmt.Sprintf("\nadditional: %s", g.additional)
 	}
-	return fmt.Sprintf("%s%s%s", m, c, a)
+	return fmt.Sprintf("%s%s%s   [goodness: %d]", m, c, a, g.goodness)
 }
+
+type ByGoodness []Guess
+
+func (gs ByGoodness) Len() int           { return len(gs) }
+func (gs ByGoodness) Less(i, j int) bool { return gs[i].goodness > gs[j].goodness }
+func (gs ByGoodness) Swap(i, j int)      { gs[i], gs[j] = gs[j], gs[i] }
 
 func interpret(s string) []Guesser {
 	if n, err := strconv.Atoi(s); err == nil {
@@ -73,11 +80,19 @@ func guessByteSize(n int) []Guess {
 		{1000, "KB"},
 	}
 	for _, u := range units {
-		if 50*n < u.divisor {
-			continue
-		}
 		q := float64(n) / float64(u.divisor)
-		gs = append(gs, Guess{meaning: fmt.Sprintf("%.1f %s", q, u.symbol)})
+		good := 0
+		switch {
+		case q < 0.01:
+			good = -50
+		case q > 1000:
+			good = 10
+		case q > 1:
+			good = 50
+		default:
+			good = -10
+		}
+		gs = append(gs, Guess{meaning: fmt.Sprintf("%.1f %s", q, u.symbol), goodness: good})
 	}
 	trace("guessBytesSize: %+v", gs)
 	return gs
@@ -138,16 +153,29 @@ func calendar(t time.Time) string {
 	return ""
 }
 
+func guess(s string) []Guess {
+	var gs []Guess
+	guessers := interpret(s)
+	trace("guessers: %#v", guessers)
+	for _, g := range guessers {
+		gs = append(gs, g.Guess()...)
+	}
+	sort.Sort(ByGoodness(gs))
+	return gs
+}
+
 func main() {
 	Trace = log.New(os.Stderr, "TRACE: ", log.Ldate|log.Ltime|log.Lshortfile)
 
 	input := "1443237670"
-	gs := interpret(input)
-	trace("guessers: %#v", gs)
-	for _, g := range gs {
-		trace("guessers: %#v", gs)
-		for _, x := range g.Guess() {
-			fmt.Println(x.String())
-		}
+	guesses := guess(input)
+	if guesses == nil {
+		fmt.Print("Could not guess anything.")
+		os.Exit(-1)
+	}
+	for _, g := range guesses {
+		fmt.Println(g.String())
 	}
 }
+
+// vim:set noet sw=8 ts=8:
