@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 )
 
 var Trace *log.Logger
@@ -18,6 +19,7 @@ func trace(s string, args ...interface{}) {
 type Guess struct {
 	meaning, comment string
 	additional       string
+	goodness         int
 }
 
 type Guesser interface {
@@ -47,6 +49,7 @@ type Int int
 func (n Int) Guess() []Guess {
 	var gs []Guess
 	gs = append(gs, guessByteSize(int(n))...)
+	gs = append(gs, guessTimestamp(int(n))...)
 	return gs
 }
 
@@ -78,6 +81,61 @@ func guessByteSize(n int) []Guess {
 	}
 	trace("guessBytesSize: %+v", gs)
 	return gs
+}
+
+// TODO: Try several timezones
+func guessTimestamp(ts int) []Guess {
+	var gs []Guess
+	now := time.Now()
+	delta := func(t time.Time) (time.Duration, string) {
+		var suff string
+		var d time.Duration
+		if now.Equal(t) {
+			return time.Duration(0), "right now"
+		}
+		if now.Before(t) {
+			suff = "ahead"
+			d = t.Sub(now)
+		} else {
+			suff = "ago"
+			d = now.Sub(t)
+		}
+		return d, fmt.Sprintf("%s %s", d.String(), suff)
+	}
+
+	tries := []time.Time{time.Unix(int64(ts), 0), time.Unix(0, int64(ts))}
+	for _, t := range tries {
+		d, dstr := delta(t)
+		good := 0
+		wantcal := true
+		switch {
+		case d < time.Minute:
+			good = 200
+		case d < time.Hour:
+			good = 180
+		case d < 24*time.Hour:
+			good = 150
+		case d < 7*24*time.Hour:
+			good = 120
+		case d < 365*24*time.Hour:
+			good = 20
+		default:
+			good = -100
+			wantcal = false
+		}
+		var cal string
+		if wantcal {
+			cal = calendar(t)
+		}
+		gs = append(gs, Guess{meaning: t.String(), comment: dstr, additional: cal, goodness: good})
+	}
+	trace("guessTimestamp: %+v", gs)
+	return gs
+}
+
+func calendar(t time.Time) string {
+	// Print ASCII art calendar
+	return ""
 }
 
 func main() {
