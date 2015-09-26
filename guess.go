@@ -6,6 +6,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -19,7 +20,7 @@ func trace(s string, args ...interface{}) {
 
 type Guess struct {
 	meaning, comment string
-	additional       string
+	additional       []string
 	goodness         int
 }
 
@@ -32,8 +33,12 @@ func (g *Guess) String() string {
 	if g.comment != "" {
 		c = fmt.Sprintf(" (%s)", g.comment)
 	}
-	if g.additional != "" {
-		a = fmt.Sprintf("\nadditional: %s", g.additional)
+	if g.additional != nil {
+		var s string
+		for _, l := range g.additional {
+			s = fmt.Sprintf("%s  %s\n", s, l)
+		}
+		a = fmt.Sprintf("\nadditional\n%s", s)
 	}
 	return fmt.Sprintf("%s%s%s   [goodness: %d]", m, c, a, g.goodness)
 }
@@ -122,7 +127,7 @@ func guessTimestamp(ts int) []Guess {
 	for _, t := range tries {
 		d, dstr := delta(t)
 		good := 0
-		wantcal := true
+		wantcal := false
 		switch {
 		case d < time.Minute:
 			good = 200
@@ -132,13 +137,14 @@ func guessTimestamp(ts int) []Guess {
 			good = 150
 		case d < 7*24*time.Hour:
 			good = 120
+			wantcal = true
 		case d < 365*24*time.Hour:
 			good = 20
+			wantcal = true
 		default:
 			good = -100
-			wantcal = false
 		}
-		var cal string
+		var cal []string
 		if wantcal {
 			cal = calendar(t)
 		}
@@ -148,9 +154,46 @@ func guessTimestamp(ts int) []Guess {
 	return gs
 }
 
-func calendar(t time.Time) string {
-	// Print ASCII art calendar
-	return ""
+func calendar(t time.Time) []string {
+	lines := []string{
+		fmt.Sprintf("%s%s %d", strings.Repeat(" ", (20-(len(t.Month().String())+1+4))/2), t.Month(), t.Year()),
+		"Mo Tu We Th Fr Sa Su",
+	}
+	dom := t.Day()
+
+	// First day of the given month
+	i := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, t.Location())
+	// Rewind to previous month’s monday
+	for ; i.Weekday() != time.Monday; i = i.AddDate(0, 0, -1) {
+	}
+	done := false
+	for ; !done; i = i.AddDate(0, 0, 7) {
+		var days []string
+		for j := i; ; j = j.AddDate(0, 0, 1) {
+			if j.Day() == 1 && j.Month() != t.Month() {
+				done = true
+				break // We are in the next month already
+			}
+			if j.Month() != t.Month() {
+				// We are in the previous month, pad with spaces
+				days = append(days, "  ")
+				continue
+			}
+			if j.Day() != i.Day() && j.Weekday() == time.Monday {
+				break // We have reached the end of the week
+			}
+			trace("inner loop j = %v, WD %v", j, j.Weekday())
+			day := j.Day()
+			if day == dom {
+				days = append(days, fmt.Sprintf("%2d", day))
+			} else {
+				days = append(days, fmt.Sprintf("%2d", day))
+			}
+		}
+		line := strings.Join(days, " ")
+		lines = append(lines, line)
+	}
+	return lines
 }
 
 func guess(s string) []Guess {
@@ -164,10 +207,20 @@ func guess(s string) []Guess {
 	return gs
 }
 
-func main() {
-	Trace = log.New(os.Stderr, "TRACE: ", log.Ldate|log.Ltime|log.Lshortfile)
+func usage() {
+	fmt.Println("Usage: %s <string-to-guess>", os.Args[0])
+}
 
-	input := "1443237670"
+func main() {
+	Trace = log.New(os.Stderr, "TRACE: ")
+
+	if len(os.Args) < 2 {
+		usage()
+		os.Exit(-1)
+	}
+
+	input := os.Args[1]
+	trace("Trying to guess %q", input)
 	guesses := guess(input)
 	if guesses == nil {
 		fmt.Print("Could not guess anything.")
