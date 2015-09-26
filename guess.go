@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -10,10 +11,14 @@ import (
 	"time"
 )
 
+var (
+	debug = flag.Bool("debug", false, "trace program execution")
+)
+
 var Trace *log.Logger
 
 func trace(s string, args ...interface{}) {
-	if Trace != nil {
+	if *debug && Trace != nil {
 		Trace.Printf(s, args...)
 	}
 }
@@ -212,14 +217,15 @@ func usage() {
 }
 
 func main() {
-	Trace = log.New(os.Stderr, "TRACE: ")
+	Trace = log.New(os.Stderr, "TRACE: ", log.LstdFlags)
 
-	if len(os.Args) < 2 {
+	flag.Parse()
+
+	input := flag.Arg(0)
+	if input == "" {
 		usage()
 		os.Exit(-1)
 	}
-
-	input := os.Args[1]
 	trace("Trying to guess %q", input)
 	guesses := guess(input)
 	if guesses == nil {
