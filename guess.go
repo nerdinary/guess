@@ -12,7 +12,9 @@ import (
 )
 
 var (
-	debug = flag.Bool("debug", false, "trace program execution")
+	debug         = flag.Bool("debug", false, "Trace program execution")
+	printUnlikely = flag.Bool("unlikely", false, "Also show unlikely matches")
+	sortGuesses   = flag.Bool("sort", true, "Sort guesses by likeliness")
 )
 
 var Trace *log.Logger
@@ -214,7 +216,6 @@ func guess(s string) []Guess {
 	for _, g := range guessers {
 		gs = append(gs, g.Guess()...)
 	}
-	sort.Sort(ByGoodness(gs))
 	return gs
 }
 
@@ -238,8 +239,14 @@ func main() {
 		fmt.Print("Could not guess anything.")
 		os.Exit(-1)
 	}
+	if *sortGuesses {
+		sort.Sort(ByGoodness(guesses))
+	}
 	for _, g := range guesses {
 		fmt.Println(g.String())
+		if !*printUnlikely && g.goodness < 0 {
+			break
+		}
 	}
 }
 
