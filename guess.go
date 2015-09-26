@@ -16,7 +16,7 @@ var (
 	verbose       = flag.Bool("verbose", false, "Print more information")
 	printUnlikely = flag.Bool("unlikely", false, "Also show unlikely matches")
 	sortGuesses   = flag.Bool("sort", true, "Sort guesses by likeliness")
-	timezones     = flag.String("timezones", "UTC,Local", "Timezones that to convert to/from for timestamps and dates")
+	timezones     = flag.String("timezones", "America/Los_Angeles,America/New_York,UTC,Asia/Tokyo", "Timezones that to convert to/from for timestamps and dates")
 )
 
 var (
