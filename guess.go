@@ -110,6 +110,7 @@ func (gs ByGoodness) Swap(i, j int)      { gs[i], gs[j] = gs[j], gs[i] }
 func interpret(s string) []Guesser {
 	var g []Guesser
 	if n, err := strconv.Atoi(s); err == nil {
+		trace("parsed as integer")
 		g = append(g, Int(n))
 	}
 
@@ -139,6 +140,31 @@ func interpret(s string) []Guesser {
 	if ip := net.ParseIP(s); ip != nil {
 		trace("successfully parsed as IP address: %v", ip)
 		g = append(g, IP(ip))
+	}
+
+	for _, i := range byteUnits {
+		mult := 0
+		switch {
+		case strings.HasSuffix(s, i.sym):
+			mult = i.mult
+			s = strings.TrimSuffix(s, i.sym)
+		case strings.HasSuffix(s, i.alias):
+			mult = i.mult
+			s = strings.TrimSuffix(s, i.alias)
+		case strings.HasSuffix(s, i.altSym):
+			mult = i.altMult
+			s = strings.TrimSuffix(s, i.altSym)
+		}
+		if mult == 0 {
+			continue
+		}
+		s = strings.TrimSpace(s)
+		f, err := strconv.ParseFloat(s, 64)
+		if err != nil {
+			trace("cannot parse %s as float: %v", s, err)
+			continue
+		}
+		g = append(g, SizeWithUnit{mult: mult, val: f})
 	}
 
 	return g
@@ -203,6 +229,17 @@ func (d BadDate) Guess() []Guess {
 	}}
 }
 
+type SizeWithUnit struct {
+	mult int
+	val  float64
+}
+
+func (s SizeWithUnit) Guess() []Guess {
+	return []Guess{{
+		meaning: fmt.Sprintf("%d bytes", int(s.val*float64(s.mult))),
+	}}
+}
+
 func guessByteSize(n int) []Guess {
 	var gs []Guess
 	for _, u := range byteUnits {
@@ -227,6 +264,10 @@ func guessByteSize(n int) []Guess {
 
 func guessTimestamp(ts int) []Guess {
 	var gs []Guess
+
+	if ts <= 0 {
+		return nil
+	}
 
 	tries := []struct {
 		t   time.Time
