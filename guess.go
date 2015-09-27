@@ -196,6 +196,7 @@ func guessBadDate(f, i string, d time.Time) []Guess {
 		good = 10
 	}
 	additional := lines
+	trace("additional: %v", additional)
 	if delta < 365*24*time.Hour {
 		additional = sideBySide(additional, calendar(d))
 	}
@@ -331,10 +332,9 @@ func deltaNow(t time.Time) (time.Duration, string) {
 
 func dateGuess(t time.Time) Guess {
 	d, dstr := deltaNow(t)
-	pref := ""
-	good := 0
+	good := -10
 	wantcal := false
-	wanttzs := false
+	wanttzs := true
 	switch {
 	case d < time.Minute:
 		good = 200
@@ -352,11 +352,11 @@ func dateGuess(t time.Time) Guess {
 	case d < 365*24*time.Hour:
 		good = 20
 		wantcal = true
-	default:
-		good = -100
+	case d < 5*365*24*time.Hour:
+		good = 0
 	}
-	dstr = pref + dstr
-	var tzs, cal, additional []string
+	var tzs, cal []string
+	trace("%v: tz=%v cal=%v", t, wanttzs, wantcal)
 	if wanttzs {
 		tzs = []string{"In other time zones:"}
 		tzs = append(tzs, differentTZs(t)...)
@@ -365,7 +365,7 @@ func dateGuess(t time.Time) Guess {
 	if wantcal {
 		cal = calendar(t)
 	}
-	additional = sideBySide(tzs, cal)
+	additional := sideBySide(tzs, cal)
 	return Guess{
 		guess:      t.String(),
 		comment:    dstr,
@@ -423,7 +423,6 @@ func calendar(t time.Time) []string {
 			if j.Day() != i.Day() && j.Weekday() == time.Monday {
 				break // We have reached the end of the week
 			}
-			trace("inner loop j = %v, WD %v", j, j.Weekday())
 			day := j.Day()
 			switch {
 			case day == dom:
