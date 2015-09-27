@@ -9,22 +9,25 @@ sure? Good thing there’s `guess`!
 See it in action:
 
     $ ./guess 1443346122085
-    2015-09-27 19:28:42.085 +1000 AEST (within the minute, 53 seconds ago)
+    Timestamp 1443346122085 is 2015-09-27 19:28:42.085 +1000 AEST (within the day, 4 hours 22 minutes ago)
         In other time zones:
-        2015-09-27 02:28:42.085 -0700 PDT
-        2015-09-27 05:28:42.085 -0400 EDT
-        2015-09-27 09:28:42.085 +0000 UTC
-        2015-09-27 18:28:42.085 +0900 JST
+        2015-09-27 02:28:42.085 -0700 PDT (America/Los_Angeles)
+        2015-09-27 05:28:42.085 -0400 EDT (America/New_York)
+        2015-09-27 09:28:42.085 +0000 UTC (UTC)
+        2015-09-27 11:28:42.085 +0200 CEST (Europe/Berlin)
+        2015-09-27 13:28:42.085 +0400 GST (Asia/Dubai)
+        2015-09-27 17:28:42.085 +0800 SGT (Asia/Singapore)
+        2015-09-27 19:28:42.085 +1000 AEST (Australia/Sydney)
         UNIX timestamp: 1443346122
-
-    1.3 TiB (1.4 TB)
-    1409517697.3 KiB (1443346122.1 KB)
-    1344.2 GiB (1443.3 GB)
-    1376482.1 MiB (1443346.1 MB)
 
 
     $ ./guess 8TiB
     8796093022208 bytes
+        8589934592.0 KiB (8796093022.2 KB)
+        8388608.0 MiB (8796093.0 MB)
+        8192.0 GiB (8796.1 GB)
+        8.0 TiB (8.8 TB)
+
 
 
     $ ./guess 2001:4860:4860::8888
@@ -34,11 +37,11 @@ See it in action:
 
 
     $ ./guess "2015-09-25 15:00:00"
-    In local time: 2015-09-25 15:00:00 +1000 AEST (within the week, 2 days 4 hours 33 minutes 24 seconds ago)
+    In local time: 2015-09-25 15:00:00 +1000 AEST (within the week, 2 days 8 hours 51 minutes 44 seconds ago)
         From PDT (America/Los_Angeles): 2015-09-26 08:00:00 +1000 AEST       September 2015
         From EDT (America/New_York): 2015-09-26 05:00:00 +1000 AEST       Mo Tu We Th Fr Sa Su
         From UTC (UTC): 2015-09-26 01:00:00 +1000 AEST                        1  2  3  4  5  6
-        From JST (Asia/Tokyo): 2015-09-25 16:00:00 +1000 AEST              7  8  9 10 11 12 13
-                                                                          14 15 16 17 18 19 20
-                                                                          21 22 23 24 25 26 27
-                                                                          28 29 30
+        From CEST (Europe/Berlin): 2015-09-25 23:00:00 +1000 AEST          7  8  9 10 11 12 13
+        From GST (Asia/Dubai): 2015-09-25 21:00:00 +1000 AEST             14 15 16 17 18 19 20
+        From SGT (Asia/Singapore): 2015-09-25 17:00:00 +1000 AEST         21 22 23 24 25 26 27
+        From AEST (Australia/Sydney): 2015-09-25 15:00:00 +1000 AEST      28 29 30
