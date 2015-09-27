@@ -46,6 +46,19 @@ var (
 	}
 )
 
+var byteUnits = []struct {
+	mult, altMult int
+	sym, altSym   string
+	alias         string
+}{
+	{1024, 1000, "KiB", "KB", "K"},
+	{1024 * 1024, 1000 * 1000, "MiB", "MB", "M"},
+	{1024 * 1024 * 1024, 1000 * 1000 * 1000, "GiB", "GB", "G"},
+	{1024 * 1024 * 1024 * 1024, 1000 * 1000 * 1000 * 1000, "TiB", "TB", "T"},
+	{1024 * 1024 * 1024 * 1024 * 1024, 1000 * 1000 * 1000 * 1000 * 1000, "PiB", "PB", "P"},
+	{1024 * 1024 * 1024 * 1024 * 1024 * 1024, 1000 * 1000 * 1000 * 1000 * 1000 * 1000, "EiB", "EB", "E"},
+}
+
 var Trace *log.Logger
 
 func trace(s string, args ...interface{}) {
@@ -192,37 +205,21 @@ func (d BadDate) Guess() []Guess {
 
 func guessByteSize(n int) []Guess {
 	var gs []Guess
-	units := []struct {
-		divisor int
-		symbol  string
-	}{
-		{1024 * 1024 * 1024 * 1024 * 1024 * 1024, "EiB"},
-		{1000 * 1000 * 1000 * 1000 * 1000 * 1000, "EB"},
-		{1024 * 1024 * 1024 * 1024 * 1024, "PiB"},
-		{1000 * 1000 * 1000 * 1000 * 1000, "PB"},
-		{1024 * 1024 * 1024 * 1024, "TiB"},
-		{1000 * 1000 * 1000 * 1000, "TB"},
-		{1024 * 1024 * 1024, "GiB"},
-		{1000 * 1000 * 1000, "GB"},
-		{1024 * 1024, "MiB"},
-		{1000 * 1000, "MB"},
-		{1024, "KiB"},
-		{1000, "KB"},
-	}
-	for _, u := range units {
-		q := float64(n) / float64(u.divisor)
+	for _, u := range byteUnits {
+		p := float64(n) / float64(u.mult)
+		q := float64(n) / float64(u.altMult)
 		good := 0
 		switch {
 		case q < 0.01:
 			good = -50
 		case q > 1000:
-			good = 10
+			good = 0
 		case q > 1:
 			good = 50
 		default:
 			good = -10
 		}
-		gs = append(gs, Guess{meaning: fmt.Sprintf("%.1f %s", q, u.symbol), goodness: good, source: "byte-sized unit"})
+		gs = append(gs, Guess{meaning: fmt.Sprintf("%.1f %s (%.1f %s)", p, u.sym, q, u.altSym), goodness: good, source: "byte-sized unit"})
 	}
 	trace("guessBytesSize: %+v", gs)
 	return gs
