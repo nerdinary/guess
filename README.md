@@ -45,3 +45,6 @@ See it in action:
         From GST (Asia/Dubai): 2015-09-25 21:00:00 +1000 AEST             14 15 16 17 18 19 20
         From SGT (Asia/Singapore): 2015-09-25 17:00:00 +1000 AEST         21 22 23 24 25 26 27
         From AEST (Australia/Sydney): 2015-09-25 15:00:00 +1000 AEST      28 29 30
+
+Take a look at the shell script `g` for how to call this program with flexible
+input options.

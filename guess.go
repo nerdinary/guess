@@ -526,7 +526,7 @@ func main() {
 		}
 	}
 
-	input := flag.Arg(0)
+	input := strings.TrimSpace(flag.Arg(0))
 	if input == "" {
 		usage()
 		os.Exit(-1)
