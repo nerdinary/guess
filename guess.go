@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/fatih/color"
 )
 
 var (
@@ -78,7 +80,8 @@ func (g *Guess) String() string {
 	if *verbose {
 		v = fmt.Sprintf("[goodness: %d, source: %s]\n", g.goodness, g.source)
 	}
-	return v + m + c + a
+	highlight := color.New(color.Bold).SprintFunc()
+	return v + highlight(m) + c + a
 }
 
 type ByGoodness []Guess
@@ -178,9 +181,9 @@ func (d BadDate) Guess() []Guess {
 	}
 
 	_, ds := deltaNow(d.t)
-	meaning := fmt.Sprintf("In local time: %s (%s)", d.t, ds)
 	return []Guess{{
-		meaning:    meaning,
+		meaning:    "In local time: " + d.t.String(),
+		comment:    ds,
 		additional: additional,
 		goodness:   good,
 		source:     "date string without timezone",
@@ -333,12 +336,13 @@ func dateGuess(t time.Time) Guess {
 	dstr = pref + dstr
 	var tzs, cal, additional []string
 	if wanttzs {
-		tzs = differentTZs(t)
+		tzs = []string{"In other time zones:"}
+		tzs = append(tzs, differentTZs(t)...)
 	}
 	if wantcal {
 		cal = calendar(t)
 	}
-	additional = sideBySide(cal, tzs)
+	additional = sideBySide(tzs, cal)
 	return Guess{
 		meaning:    t.String(),
 		comment:    dstr,
@@ -369,6 +373,11 @@ func calendar(t time.Time) []string {
 		"Mo Tu We Th Fr Sa Su",
 	}
 	dom := t.Day()
+	today := time.Now().Day()
+
+	ctoday := color.New(color.Bold).Add(color.Underline).SprintFunc()
+	cgiven := color.New(color.BgRed).Add(color.Bold).SprintFunc()
+	csunday := color.New(color.FgMagenta).SprintFunc()
 
 	// First day of the given month
 	i := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, t.Location())
@@ -393,9 +402,14 @@ func calendar(t time.Time) []string {
 			}
 			trace("inner loop j = %v, WD %v", j, j.Weekday())
 			day := j.Day()
-			if day == dom {
-				days = append(days, fmt.Sprintf("%2d", day))
-			} else {
+			switch {
+			case day == dom:
+				days = append(days, cgiven(fmt.Sprintf("%2d", day)))
+			case day == today:
+				days = append(days, ctoday(fmt.Sprintf("%2d", day)))
+			case j.Weekday() == time.Sunday:
+				days = append(days, csunday(fmt.Sprintf("%2d", day)))
+			default:
 				days = append(days, fmt.Sprintf("%2d", day))
 			}
 		}
