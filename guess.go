@@ -220,7 +220,7 @@ func (d BadDate) Guess() []Guess {
 	}
 	additional := lines
 	if delta < 365*24*time.Hour {
-		additional = sideBySide(calendar(d.t), additional)
+		additional = sideBySide(additional, calendar(d.t))
 	}
 
 	_, ds := deltaNow(d.t)
