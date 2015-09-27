@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"sort"
 	"strconv"
@@ -117,6 +118,11 @@ func interpret(s string) []Guesser {
 			trace("%q is parsable from format %q", s, format)
 			g = append(g, BadDate{f: format, i: s, t: t})
 		}
+	}
+
+	if ip := net.ParseIP(s); ip != nil {
+		trace("successfully parsed as IP address: %v", ip)
+		g = append(g, IP(ip))
 	}
 
 	return g
@@ -397,6 +403,30 @@ func calendar(t time.Time) []string {
 		lines = append(lines, line)
 	}
 	return lines
+}
+
+type IP net.IP
+type Host string
+
+func (_ip IP) Guess() []Guess {
+	var additional []string
+	ip := net.IP(_ip)
+	r, _ := net.LookupAddr(ip.String())
+	for _, h := range r {
+		addrs, err := net.LookupHost(h)
+		if err != nil {
+			continue
+		}
+		additional = append(additional,
+			fmt.Sprintf("reverse lookup: %s", h),
+			fmt.Sprintf("which resolves to: %s", strings.Join(addrs, ", ")))
+	}
+	return []Guess{{
+		meaning:    "IP address " + ip.String(),
+		additional: additional,
+		source:     "IP address",
+		goodness:   200,
+	}}
 }
 
 func sideBySide(left, right []string) []string {
