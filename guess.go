@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	debug         = flag.Bool("debug", false, "Trace program execution")
+	doTrace       = flag.Bool("trace", false, "Trace program execution")
 	verbose       = flag.Bool("verbose", false, "Print more information")
 	printUnlikely = flag.Bool("unlikely", false, "Also show unlikely matches")
 	sortGuesses   = flag.Bool("sort", true, "Sort guesses by likeliness")
@@ -46,7 +46,7 @@ var (
 var Trace *log.Logger
 
 func trace(s string, args ...interface{}) {
-	if *debug && Trace != nil {
+	if *doTrace && Trace != nil {
 		Trace.Printf(s, args...)
 	}
 }
