@@ -109,7 +109,7 @@ func interpret(s string) []Guesser {
 	}
 	if !founddate {
 		for _, format := range badTZformats {
-			t, err := time.Parse(format, s)
+			t, err := time.ParseInLocation(format, s, time.Local)
 			if err != nil {
 				trace("error parsing as date: %v", err)
 				continue
@@ -170,8 +170,11 @@ func (d BadDate) Guess() []Guess {
 	if delta < 365*24*time.Hour {
 		additional = sideBySide(calendar(d.t), additional)
 	}
+
+	_, ds := deltaNow(d.t)
+	meaning := fmt.Sprintf("In local time: %s (%s)", d.t, ds)
 	return []Guess{{
-		meaning:    "Date from unknown time zone",
+		meaning:    meaning,
 		additional: additional,
 		goodness:   good,
 		source:     "date string without timezone",
@@ -237,46 +240,81 @@ func guessTimestamp(ts int) []Guess {
 	return gs
 }
 
-func dateGuess(t time.Time) Guess {
+func deltaNow(t time.Time) (time.Duration, string) {
+	var suff string
+	var d time.Duration
+
 	now := time.Now()
-	delta := func(t time.Time) (time.Duration, string) {
-		var suff string
-		var d time.Duration
-		if now.Equal(t) {
-			return time.Duration(0), "right now"
-		}
-		if now.Before(t) {
-			suff = "ahead"
-			d = t.Sub(now)
-		} else {
-			suff = "ago"
-			d = now.Sub(t)
-		}
-		// truncate sub-second part of duration because it hurts readability
-		subms := d.Nanoseconds() % 1000000000
-		d -= time.Duration(subms) * time.Nanosecond
-		return d, fmt.Sprintf("%s %s", d.String(), suff)
+	if now.Equal(t) {
+		return time.Duration(0), "right now"
 	}
-	d, dstr := delta(t)
+	if now.Before(t) {
+		suff = "ahead"
+		d = t.Sub(now)
+	} else {
+		suff = "ago"
+		d = now.Sub(t)
+	}
+
+	interv := []struct {
+		d    time.Duration
+		desc string
+	}{
+		{time.Minute, "minute"},
+		{time.Hour, "hour"},
+		{24 * time.Hour, "day"},
+		{7 * 24 * time.Hour, "week"},
+	}
+
+	var roughly string
+	for _, i := range interv {
+		if d < i.d {
+			roughly = "within the " + i.desc + ", "
+			break
+		}
+	}
+
+	days, hours, minutes, seconds := 0, int(d.Hours()), int(d.Minutes()), int(d.Seconds())
+	minutes -= 60 * hours
+	seconds -= 3600*hours + 60*minutes
+	for hours >= 24 {
+		days += 1
+		hours -= 24
+	}
+	exact := suff
+	plural := map[bool]string{true: "s", false: ""}
+	if seconds != 0 {
+		exact = fmt.Sprintf("%d second%s %s", seconds, plural[seconds > 1], exact)
+	}
+	if minutes != 0 {
+		exact = fmt.Sprintf("%d minute%s %s", minutes, plural[minutes > 1], exact)
+	}
+	if hours != 0 {
+		exact = fmt.Sprintf("%d hour%s %s", hours, plural[hours > 1], exact)
+	}
+	if days != 0 {
+		exact = fmt.Sprintf("%d day%s %s", days, plural[days > 1], exact)
+	}
+	return d, roughly + exact
+}
+
+func dateGuess(t time.Time) Guess {
+	d, dstr := deltaNow(t)
 	pref := ""
 	good := 0
 	wantcal := false
 	wanttzs := false
 	switch {
 	case d < time.Minute:
-		pref = "within the minute, "
 		good = 200
 		wanttzs = true
 	case d < time.Hour:
-		pref = "within the hour, "
 		good = 180
 		wanttzs = true
 	case d < 24*time.Hour:
-		pref = "within the day, "
 		good = 150
 		wanttzs = true
 	case d < 7*24*time.Hour:
-		pref = "within the week, "
 		good = 120
 		wanttzs = true
 		wantcal = true
