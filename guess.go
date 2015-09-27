@@ -74,10 +74,6 @@ type Guess struct {
 	goodness       int
 }
 
-type Guesser interface {
-	Guess() []Guess
-}
-
 func (g *Guess) String() string {
 	t, c, a := g.guess, "", ""
 	if g.comment != "" {
@@ -107,15 +103,16 @@ func (gs ByGoodness) Swap(i, j int)      { gs[i], gs[j] = gs[j], gs[i] }
 // then sort within the group, and sort a []GuessGroup collection by e.g.
 // maximum element or sum of guesses.
 
-func interpret(s string) []Guesser {
-	var g []Guesser
+func guess(s string) []Guess {
+	var g []Guess
 	if n, err := strconv.Atoi(s); err == nil {
 		trace("parsed as integer")
-		g = append(g, Int(n))
+		g = append(g, guessByteSize(n)...)
+		g = append(g, guessTimestamp(int64(n))...)
 	}
 
 	if s == "now" {
-		g = append(g, Int(time.Now().Unix()))
+		g = append(g, guessTimestamp(time.Now().Unix())...)
 	}
 
 	founddate := false
@@ -126,7 +123,9 @@ func interpret(s string) []Guesser {
 			continue
 		}
 		trace("successfully parsed date %q as %s", s, d)
-		g = append(g, Date(d))
+		gg := dateGuess(d)
+		gg.source = "date string with timezone"
+		g = append(g, gg)
 		founddate = true
 	}
 	if !founddate {
@@ -137,13 +136,13 @@ func interpret(s string) []Guesser {
 				continue
 			}
 			trace("%q is parsable from format %q", s, format)
-			g = append(g, BadDate{f: format, i: s, t: t})
+			g = append(g, guessBadDate(format, s, t)...)
 		}
 	}
 
 	if ip := net.ParseIP(s); ip != nil {
 		trace("successfully parsed as IP address: %v", ip)
-		g = append(g, IP(ip))
+		g = append(g, guessIP(ip)...)
 	}
 
 	for _, i := range byteUnits {
@@ -168,38 +167,16 @@ func interpret(s string) []Guesser {
 			trace("cannot parse %s as float: %v", s, err)
 			continue
 		}
-		g = append(g, SizeWithUnit{mult: mult, val: f})
+		g = append(g, guessBytesWithUnit(mult, f)...)
 	}
 
 	return g
 }
 
-type Int int
-
-func (n Int) Guess() []Guess {
-	var gs []Guess
-	gs = append(gs, guessByteSize(int(n))...)
-	gs = append(gs, guessTimestamp(int(n))...)
-	return gs
-}
-
-type Date time.Time
-
-func (d Date) Guess() []Guess {
-	g := dateGuess(time.Time(d))
-	g.source = "date string with timezone"
-	return []Guess{g}
-}
-
-type BadDate struct {
-	f, i string
-	t    time.Time
-}
-
-func (d BadDate) Guess() []Guess {
+func guessBadDate(f, i string, d time.Time) []Guess {
 	var lines []string
 	for _, loc := range TZs {
-		t, err := time.ParseInLocation(d.f, d.i, loc)
+		t, err := time.ParseInLocation(f, i, loc)
 		if err != nil {
 			trace("previously parsable date is not parsable: %+v", d)
 			continue
@@ -208,7 +185,7 @@ func (d BadDate) Guess() []Guess {
 		l := fmt.Sprintf("From %s (%s): %s", zone, loc, t.Local())
 		lines = append(lines, l)
 	}
-	delta := time.Now().Sub(d.t)
+	delta := time.Now().Sub(d)
 	good := 0
 	switch {
 	case delta < 24*time.Hour:
@@ -220,12 +197,12 @@ func (d BadDate) Guess() []Guess {
 	}
 	additional := lines
 	if delta < 365*24*time.Hour {
-		additional = sideBySide(additional, calendar(d.t))
+		additional = sideBySide(additional, calendar(d))
 	}
 
-	_, ds := deltaNow(d.t)
+	_, ds := deltaNow(d)
 	return []Guess{{
-		guess:      "In local time: " + d.t.String(),
+		guess:      "In local time: " + d.String(),
 		comment:    ds,
 		additional: additional,
 		goodness:   good,
@@ -238,9 +215,9 @@ type SizeWithUnit struct {
 	val  float64
 }
 
-func (s SizeWithUnit) Guess() []Guess {
+func guessBytesWithUnit(mult int, val float64) []Guess {
 	return []Guess{{
-		guess: fmt.Sprintf("%d bytes", int(s.val*float64(s.mult))),
+		guess: fmt.Sprintf("%d bytes", int(val*float64(mult))),
 	}}
 }
 
@@ -266,7 +243,7 @@ func guessByteSize(n int) []Guess {
 	return gs
 }
 
-func guessTimestamp(ts int) []Guess {
+func guessTimestamp(ts int64) []Guess {
 	var gs []Guess
 
 	if ts <= 0 {
@@ -462,12 +439,8 @@ func calendar(t time.Time) []string {
 	return lines
 }
 
-type IP net.IP
-type Host string
-
-func (_ip IP) Guess() []Guess {
+func guessIP(ip net.IP) []Guess {
 	var additional []string
-	ip := net.IP(_ip)
 	r, err := net.LookupAddr(ip.String())
 	if err != nil {
 		additional = append(additional, "(address does not resolve to a host name)")
@@ -518,16 +491,6 @@ func sideBySide(left, right []string) []string {
 		out[i] = l + strings.Repeat(" ", spaces) + right[i]
 	}
 	return out
-}
-
-func guess(s string) []Guess {
-	var gs []Guess
-	guessers := interpret(s)
-	trace("guessers: %#v", guessers)
-	for _, g := range guessers {
-		gs = append(gs, g.Guess()...)
-	}
-	return gs
 }
 
 func usage() {
