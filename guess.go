@@ -19,7 +19,9 @@ var (
 	verbose       = flag.Bool("verbose", false, "Print more information")
 	printUnlikely = flag.Bool("unlikely", false, "Also show unlikely matches")
 	sortGuesses   = flag.Bool("sort", true, "Sort guesses by likeliness")
-	timezones     = flag.String("timezones", "America/Los_Angeles,America/New_York,UTC,Asia/Tokyo", "Timezones that to convert to/from for timestamps and dates")
+	timezones     = flag.String("timezones",
+		"America/Los_Angeles,America/New_York,UTC,Europe/Berlin,Asia/Dubai,Asia/Singapore,Australia/Sydney",
+		"Timezones that to convert to/from for timestamps and dates")
 )
 
 var (
@@ -265,6 +267,7 @@ func guessTimestamp(ts int64) []Guess {
 	}
 	for _, i := range tries {
 		g := dateGuess(i.t)
+		g.guess = fmt.Sprintf("Timestamp %d is ", ts) + g.guess
 		g.source = i.src
 		gs = append(gs, g)
 	}
@@ -377,7 +380,7 @@ func dateGuess(t time.Time) Guess {
 func differentTZs(t time.Time) []string {
 	var lines []string
 	for _, loc := range TZs {
-		lines = append(lines, t.In(loc).String())
+		lines = append(lines, fmt.Sprintf("%s (%s)", t.In(loc).String(), loc.String()))
 	}
 	return lines
 }
