@@ -510,7 +510,7 @@ func main() {
 	trace("Trying to guess %q", input)
 	guesses := guess(input)
 	if guesses == nil {
-		fmt.Print("Could not guess anything.")
+		fmt.Println("Could not guess anything.")
 		os.Exit(-1)
 	}
 	if *sortGuesses {
