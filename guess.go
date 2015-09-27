@@ -20,7 +20,13 @@ var (
 )
 
 var (
-	TZs []*time.Location
+	TZs           []*time.Location
+	goodTZformats = []string{time.RFC3339Nano, time.RFC3339, time.RFC1123Z, time.RFC1123, time.RFC850, time.RFC822Z, time.RFC822, time.RubyDate, time.UnixDate}
+	badTZformats  = []string{
+		time.ANSIC,
+		// Mon Jan _2 15:04:05 2006
+		"Jan _2 2006",
+	}
 )
 
 var Trace *log.Logger
@@ -71,10 +77,26 @@ func (gs ByGoodness) Swap(i, j int)      { gs[i], gs[j] = gs[j], gs[i] }
 // maximum element or sum of guesses.
 
 func interpret(s string) []Guesser {
+	var g []Guesser
 	if n, err := strconv.Atoi(s); err == nil {
-		return []Guesser{Int(n)}
+		g = append(g, Int(n))
 	}
-	return nil
+
+	founddate := false
+	for _, format := range goodTZformats {
+		d, err := time.Parse(format, s)
+		if err != nil {
+			continue
+		}
+		trace("successfully parsed date %q as %s", s, d)
+		g = append(g, Date(d))
+		founddate = true
+	}
+	if !founddate {
+		trace("not found yet")
+	}
+
+	return g
 }
 
 type Int int
@@ -84,6 +106,14 @@ func (n Int) Guess() []Guess {
 	gs = append(gs, guessByteSize(int(n))...)
 	gs = append(gs, guessTimestamp(int(n))...)
 	return gs
+}
+
+type Date time.Time
+
+func (d Date) Guess() []Guess {
+	g := dateGuess(time.Time(d))
+	g.source = "date string with timezone"
+	return []Guess{g}
 }
 
 func guessByteSize(n int) []Guess {
@@ -124,9 +154,28 @@ func guessByteSize(n int) []Guess {
 	return gs
 }
 
-// TODO: Try several timezones
 func guessTimestamp(ts int) []Guess {
 	var gs []Guess
+
+	tries := []struct {
+		t   time.Time
+		src string
+	}{
+		{time.Unix(int64(ts), 0), "timestamp (seconds)"},
+		{time.Unix(0, 1000000*int64(ts)), "timestamp (milliseconds)"},
+		{time.Unix(0, 1000*int64(ts)), "timestamp (microseconds)"},
+		{time.Unix(0, int64(ts)), "timestamp (nanoseconds)"},
+	}
+	for _, i := range tries {
+		g := dateGuess(i.t)
+		g.source = i.src
+		gs = append(gs, g)
+	}
+	trace("guessTimestamp: %+v", gs)
+	return gs
+}
+
+func dateGuess(t time.Time) Guess {
 	now := time.Now()
 	delta := func(t time.Time) (time.Duration, string) {
 		var suff string
@@ -146,67 +195,50 @@ func guessTimestamp(ts int) []Guess {
 		d -= time.Duration(subms) * time.Nanosecond
 		return d, fmt.Sprintf("%s %s", d.String(), suff)
 	}
-
-	tries := []struct {
-		ts  time.Time
-		src string
-	}{
-		{time.Unix(int64(ts), 0), "timestamp (seconds)"},
-		{time.Unix(0, 1000000*int64(ts)), "timestamp (milliseconds)"},
-		{time.Unix(0, 1000*int64(ts)), "timestamp (microseconds)"},
-		{time.Unix(0, int64(ts)), "timestamp (nanoseconds)"},
+	d, dstr := delta(t)
+	pref := ""
+	good := 0
+	wantcal := false
+	wanttzs := false
+	switch {
+	case d < time.Minute:
+		pref = "within the minute, "
+		good = 200
+		wanttzs = true
+	case d < time.Hour:
+		pref = "within the hour, "
+		good = 180
+		wanttzs = true
+	case d < 24*time.Hour:
+		pref = "within the day, "
+		good = 150
+		wanttzs = true
+	case d < 7*24*time.Hour:
+		pref = "within the week, "
+		good = 120
+		wanttzs = true
+		wantcal = true
+	case d < 365*24*time.Hour:
+		good = 20
+		wantcal = true
+	default:
+		good = -100
 	}
-	for _, i := range tries {
-		t := i.ts
-		d, dstr := delta(t)
-		pref := ""
-		good := 0
-		wantcal := false
-		wanttzs := false
-		switch {
-		case d < time.Minute:
-			pref = "within the minute, "
-			good = 200
-			wanttzs = true
-		case d < time.Hour:
-			pref = "within the hour, "
-			good = 180
-			wanttzs = true
-		case d < 24*time.Hour:
-			pref = "within the day, "
-			good = 150
-			wanttzs = true
-		case d < 7*24*time.Hour:
-			pref = "within the week, "
-			good = 120
-			wanttzs = true
-			wantcal = true
-		case d < 365*24*time.Hour:
-			good = 20
-			wantcal = true
-		default:
-			good = -100
-		}
-		dstr = pref + dstr
-		var tzs, cal, additional []string
-		if wanttzs {
-			tzs = differentTZs(t)
-		}
-		if wantcal {
-			cal = calendar(t)
-		}
-		additional = sideBySide(cal, tzs)
-		g := Guess{
-			meaning:    t.String(),
-			comment:    dstr,
-			additional: additional,
-			goodness:   good,
-			source:     i.src,
-		}
-		gs = append(gs, g)
+	dstr = pref + dstr
+	var tzs, cal, additional []string
+	if wanttzs {
+		tzs = differentTZs(t)
 	}
-	trace("guessTimestamp: %+v", gs)
-	return gs
+	if wantcal {
+		cal = calendar(t)
+	}
+	additional = sideBySide(cal, tzs)
+	return Guess{
+		meaning:    t.String(),
+		comment:    dstr,
+		additional: additional,
+		goodness:   good,
+	}
 }
 
 func differentTZs(t time.Time) []string {
