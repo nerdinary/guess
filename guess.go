@@ -177,6 +177,13 @@ func guess(s string) []Guess {
 
 func guessBadDate(f, i string, d time.Time) []Guess {
 	var lines []string
+
+	delta, ds := deltaNow(d)
+	wantcal := false
+	if delta > 2*24*time.Hour && delta < 365*24*time.Hour {
+		wantcal = true
+	}
+
 	for _, loc := range TZs {
 		t, err := time.ParseInLocation(f, i, loc)
 		if err != nil {
@@ -185,9 +192,13 @@ func guessBadDate(f, i string, d time.Time) []Guess {
 		}
 		zone, _ := t.Zone()
 		l := fmt.Sprintf("From %s (%s): %s", zone, loc, t.Local())
+		if !wantcal {
+			_, s := deltaNow(t)
+			l += fmt.Sprintf(" (%s)", s)
+		}
 		lines = append(lines, l)
 	}
-	delta := time.Now().Sub(d)
+
 	good := 0
 	switch {
 	case delta < 24*time.Hour:
@@ -198,12 +209,10 @@ func guessBadDate(f, i string, d time.Time) []Guess {
 		good = 10
 	}
 	additional := lines
-	trace("additional: %v", additional)
-	if delta < 365*24*time.Hour {
+	if wantcal {
 		additional = sideBySide(additional, calendar(d))
 	}
 
-	_, ds := deltaNow(d)
 	return []Guess{{
 		guess:      "In local time: " + d.String(),
 		comment:    ds,
