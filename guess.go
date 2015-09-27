@@ -68,10 +68,10 @@ func trace(s string, args ...interface{}) {
 }
 
 type Guess struct {
-	meaning, comment string
-	additional       []string
-	source           string
-	goodness         int
+	guess, comment string
+	additional     []string
+	source         string
+	goodness       int
 }
 
 type Guesser interface {
@@ -79,7 +79,7 @@ type Guesser interface {
 }
 
 func (g *Guess) String() string {
-	m, c, a := g.meaning, "", ""
+	t, c, a := g.guess, "", ""
 	if g.comment != "" {
 		c = fmt.Sprintf(" (%s)", g.comment)
 	}
@@ -94,7 +94,7 @@ func (g *Guess) String() string {
 		v = fmt.Sprintf("[goodness: %d, source: %s]\n", g.goodness, g.source)
 	}
 	highlight := color.New(color.Bold).SprintFunc()
-	return v + highlight(m) + c + a
+	return v + highlight(t) + c + a
 }
 
 type ByGoodness []Guess
@@ -225,7 +225,7 @@ func (d BadDate) Guess() []Guess {
 
 	_, ds := deltaNow(d.t)
 	return []Guess{{
-		meaning:    "In local time: " + d.t.String(),
+		guess:      "In local time: " + d.t.String(),
 		comment:    ds,
 		additional: additional,
 		goodness:   good,
@@ -240,7 +240,7 @@ type SizeWithUnit struct {
 
 func (s SizeWithUnit) Guess() []Guess {
 	return []Guess{{
-		meaning: fmt.Sprintf("%d bytes", int(s.val*float64(s.mult))),
+		guess: fmt.Sprintf("%d bytes", int(s.val*float64(s.mult))),
 	}}
 }
 
@@ -260,7 +260,7 @@ func guessByteSize(n int) []Guess {
 		default:
 			good = -10
 		}
-		gs = append(gs, Guess{meaning: fmt.Sprintf("%.1f %s (%.1f %s)", p, u.sym, q, u.altSym), goodness: good, source: "byte-sized unit"})
+		gs = append(gs, Guess{guess: fmt.Sprintf("%.1f %s (%.1f %s)", p, u.sym, q, u.altSym), goodness: good, source: "byte-sized unit"})
 	}
 	trace("guessBytesSize: %+v", gs)
 	return gs
@@ -387,7 +387,7 @@ func dateGuess(t time.Time) Guess {
 	}
 	additional = sideBySide(tzs, cal)
 	return Guess{
-		meaning:    t.String(),
+		guess:      t.String(),
 		comment:    dstr,
 		additional: additional,
 		goodness:   good,
@@ -483,7 +483,7 @@ func (_ip IP) Guess() []Guess {
 		}
 	}
 	return []Guess{{
-		meaning:    "IP address " + ip.String(),
+		guess:      "IP address " + ip.String(),
 		additional: additional,
 		source:     "IP address",
 		goodness:   200,
