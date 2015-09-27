@@ -82,7 +82,6 @@ func (g *Guess) String() string {
 		c = fmt.Sprintf(" (%s)", g.comment)
 	}
 	if g.additional != nil {
-		a = "\n"
 		for _, l := range g.additional {
 			a = a + "    " + l + "\n"
 		}
@@ -92,7 +91,7 @@ func (g *Guess) String() string {
 		v = fmt.Sprintf("[goodness: %d, source: %s]\n", g.goodness, g.source)
 	}
 	highlight := color.New(color.Bold).SprintFunc()
-	return v + highlight(t) + c + a
+	return v + highlight(t) + c + "\n" + a
 }
 
 type ByGoodness []Guess
