@@ -1,8 +1,8 @@
 Guess stuff!
 ============
 
-You have a UNIX timestamp and don’t know which date it equals? You have a date
-without timezone and want to see where it probably originates? You have a
+You have a UNIX timestamp and don’t know which date it represents? You have a date
+string without timezone and want to see where it probably originates? You have a
 number of bytes that looks suspiciously like 23 Terabytes, but you want to be
 sure? Good thing there’s `guess`!
 
