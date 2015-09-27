@@ -463,15 +463,19 @@ type Host string
 func (_ip IP) Guess() []Guess {
 	var additional []string
 	ip := net.IP(_ip)
-	r, _ := net.LookupAddr(ip.String())
-	for _, h := range r {
-		addrs, err := net.LookupHost(h)
-		if err != nil {
-			continue
+	r, err := net.LookupAddr(ip.String())
+	if err != nil {
+		additional = append(additional, "(address does not resolve to a host name)")
+	} else {
+		for _, h := range r {
+			addrs, err := net.LookupHost(h)
+			if err != nil {
+				continue
+			}
+			additional = append(additional,
+				fmt.Sprintf("reverse lookup: %s", h),
+				fmt.Sprintf("which resolves to: %s", strings.Join(addrs, ", ")))
 		}
-		additional = append(additional,
-			fmt.Sprintf("reverse lookup: %s", h),
-			fmt.Sprintf("which resolves to: %s", strings.Join(addrs, ", ")))
 	}
 	return []Guess{{
 		meaning:    "IP address " + ip.String(),
