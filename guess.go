@@ -114,6 +114,10 @@ func interpret(s string) []Guesser {
 		g = append(g, Int(n))
 	}
 
+	if s == "now" {
+		g = append(g, Int(time.Now().Unix()))
+	}
+
 	founddate := false
 	for _, format := range goodTZformats {
 		d, err := time.Parse(format, s)
@@ -292,15 +296,15 @@ func deltaNow(t time.Time) (time.Duration, string) {
 	var d time.Duration
 
 	now := time.Now()
-	if now.Equal(t) {
-		return time.Duration(0), "right now"
-	}
 	if now.Before(t) {
 		suff = "ahead"
 		d = t.Sub(now)
 	} else {
 		suff = "ago"
 		d = now.Sub(t)
+	}
+	if d < 1*time.Second {
+		return time.Duration(0), "right now"
 	}
 
 	interv := []struct {
@@ -376,6 +380,7 @@ func dateGuess(t time.Time) Guess {
 	if wanttzs {
 		tzs = []string{"In other time zones:"}
 		tzs = append(tzs, differentTZs(t)...)
+		tzs = append(tzs, fmt.Sprintf("UNIX timestamp: %d", t.Unix()))
 	}
 	if wantcal {
 		cal = calendar(t)
