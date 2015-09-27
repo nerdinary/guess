@@ -216,31 +216,34 @@ type SizeWithUnit struct {
 }
 
 func guessBytesWithUnit(mult int, val float64) []Guess {
+	n := int(val * float64(mult))
 	return []Guess{{
-		guess: fmt.Sprintf("%d bytes", int(val*float64(mult))),
+		guess:      fmt.Sprintf("%d bytes", n),
+		additional: bytesInfo(n),
+		source:     "byte count with unit",
 	}}
 }
 
 func guessByteSize(n int) []Guess {
-	var gs []Guess
+	return []Guess{{
+		guess:      fmt.Sprintf("%d bytes", n),
+		additional: bytesInfo(n),
+		source:     "byte count without explicit unit",
+	}}
+}
+
+func bytesInfo(n int) []string {
+	var lines []string
 	for _, u := range byteUnits {
 		p := float64(n) / float64(u.mult)
 		q := float64(n) / float64(u.altMult)
-		good := 0
-		switch {
-		case q < 0.01:
-			good = -50
-		case q > 1000:
-			good = 0
-		case q > 1:
-			good = 50
-		default:
-			good = -10
+		if q < 1 {
+			continue
 		}
-		gs = append(gs, Guess{guess: fmt.Sprintf("%.1f %s (%.1f %s)", p, u.sym, q, u.altSym), goodness: good, source: "byte-sized unit"})
+		lines = append(lines, fmt.Sprintf("%.1f %s (%.1f %s)", p, u.sym, q, u.altSym))
 	}
-	trace("guessBytesSize: %+v", gs)
-	return gs
+	trace("bytesInfo: %+v", lines)
+	return lines
 }
 
 func guessTimestamp(ts int64) []Guess {
@@ -530,13 +533,13 @@ func main() {
 	for _, g := range guesses {
 		if *printUnlikely || g.goodness >= 0 {
 			n++
-			fmt.Println(g.String())
+			fmt.Print(g.String())
 		}
 	}
 	if !*printUnlikely && n == 0 {
 		fmt.Println("No good guesses found. How about these unlikely ones?")
 		for _, g := range guesses {
-			fmt.Println(g.String())
+			fmt.Print(g.String())
 		}
 	}
 }
