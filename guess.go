@@ -563,8 +563,16 @@ func main() {
 	if *sortGuesses {
 		sort.Sort(ByGoodness(guesses))
 	}
+	n := 0
 	for _, g := range guesses {
 		if *printUnlikely || g.goodness >= 0 {
+			n++
+			fmt.Println(g.String())
+		}
+	}
+	if !*printUnlikely && n == 0 {
+		fmt.Println("No good guesses found. How about these unlikely ones?")
+		for _, g := range guesses {
 			fmt.Println(g.String())
 		}
 	}
