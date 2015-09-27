@@ -517,9 +517,8 @@ func main() {
 		sort.Sort(ByGoodness(guesses))
 	}
 	for _, g := range guesses {
-		fmt.Println(g.String())
-		if !*printUnlikely && g.goodness < 0 {
-			break
+		if *printUnlikely || g.goodness >= 0 {
+			fmt.Println(g.String())
 		}
 	}
 }
