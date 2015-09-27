@@ -21,11 +21,25 @@ var (
 
 var (
 	TZs           []*time.Location
-	goodTZformats = []string{time.RFC3339Nano, time.RFC3339, time.RFC1123Z, time.RFC1123, time.RFC850, time.RFC822Z, time.RFC822, time.RubyDate, time.UnixDate}
-	badTZformats  = []string{
+	goodTZformats = []string{
+		time.RFC3339Nano,
+		time.RFC3339,
+		time.RFC1123Z,
+		time.RFC1123,
+		time.RFC850,
+		time.RFC822Z,
+		time.RFC822,
+		time.RubyDate,
+		time.UnixDate,
+		"2006-01-02 15:04:05.999999999 -0700 MST", // as used by time.Time.String() method
+	}
+	badTZformats = []string{
 		time.ANSIC,
-		// Mon Jan _2 15:04:05 2006
-		"Jan _2 2006",
+		"Jan _2 2006 15:04:05",
+		"2006-02-01 15:04:05",
+		"2006-02-01T15:04:05",
+		"01/02/2006 15:04:05",
+		"02/01/2006 15:04:05",
 	}
 )
 
@@ -86,6 +100,7 @@ func interpret(s string) []Guesser {
 	for _, format := range goodTZformats {
 		d, err := time.Parse(format, s)
 		if err != nil {
+			trace("error parsing as date: %v", err)
 			continue
 		}
 		trace("successfully parsed date %q as %s", s, d)
@@ -93,7 +108,15 @@ func interpret(s string) []Guesser {
 		founddate = true
 	}
 	if !founddate {
-		trace("not found yet")
+		for _, format := range badTZformats {
+			t, err := time.Parse(format, s)
+			if err != nil {
+				trace("error parsing as date: %v", err)
+				continue
+			}
+			trace("%q is parsable from format %q", s, format)
+			g = append(g, BadDate{f: format, i: s, t: t})
+		}
 	}
 
 	return g
@@ -114,6 +137,45 @@ func (d Date) Guess() []Guess {
 	g := dateGuess(time.Time(d))
 	g.source = "date string with timezone"
 	return []Guess{g}
+}
+
+type BadDate struct {
+	f, i string
+	t    time.Time
+}
+
+func (d BadDate) Guess() []Guess {
+	var lines []string
+	for _, loc := range TZs {
+		t, err := time.ParseInLocation(d.f, d.i, loc)
+		if err != nil {
+			trace("previously parsable date is not parsable: %+v", d)
+			continue
+		}
+		zone, _ := t.Zone()
+		l := fmt.Sprintf("From %s (%s): %s", zone, loc, t.Local())
+		lines = append(lines, l)
+	}
+	delta := time.Now().Sub(d.t)
+	good := 0
+	switch {
+	case delta < 24*time.Hour:
+		good = 200
+	case delta < 7*24*time.Hour:
+		good = 50
+	case delta < 365*24*time.Hour:
+		good = 10
+	}
+	additional := lines
+	if delta < 365*24*time.Hour {
+		additional = sideBySide(calendar(d.t), additional)
+	}
+	return []Guess{{
+		meaning:    "Date from unknown time zone",
+		additional: additional,
+		goodness:   good,
+		source:     "date string without timezone",
+	}}
 }
 
 func guessByteSize(n int) []Guess {
