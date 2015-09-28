@@ -22,6 +22,7 @@ var (
 	timezones     = flag.String("timezones",
 		"America/Los_Angeles,America/New_York,UTC,Europe/Berlin,Asia/Dubai,Asia/Singapore,Australia/Sydney",
 		"Timezones that to convert to/from for timestamps and dates")
+	alwaysCalendar = flag.Bool("calendar", false, "Always display a calendar alongside dates")
 )
 
 var (
@@ -272,7 +273,7 @@ func guessBadDate(f, i string, d time.Time) []Guess {
 		good = 10
 	}
 	additional := lines
-	if wantcal {
+	if wantcal || *alwaysCalendar {
 		additional = sideBySide(additional, calendar(d))
 	}
 
@@ -431,13 +432,12 @@ func dateGuess(t time.Time) Guess {
 		good = 0
 	}
 	var tzs, cal []string
-	trace("%v: tz=%v cal=%v", t, wanttzs, wantcal)
 	if wanttzs {
 		tzs = []string{"In other time zones:"}
 		tzs = append(tzs, differentTZs(t)...)
 		tzs = append(tzs, fmt.Sprintf("UNIX timestamp: %d", t.Unix()))
 	}
-	if wantcal {
+	if wantcal || *alwaysCalendar {
 		cal = calendar(t)
 	}
 	additional := sideBySide(tzs, cal)
