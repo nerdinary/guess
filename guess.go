@@ -224,6 +224,8 @@ func guessBadDate(f, i string, d time.Time) []Guess {
 		}
 		lines = append(lines, l)
 	}
+	ut, _ := time.ParseInLocation(f, i, time.UTC)
+	lines = append(lines, fmt.Sprintf("As UNIX timestamp: %d", ut.Unix()))
 
 	good := 0
 	switch {
