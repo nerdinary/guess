@@ -53,6 +53,20 @@ var (
 		"2006/01/02 15:04:05.999999999",
 		"2006/01/02-15:04:05.999999999",
 		"20060102150405",
+		"Jan _2 15:04:05",
+		"January _2 15:04:05",
+		"2 Jan 15:04:05",
+		"2 January 15:04:05",
+		"2 Jan 15:04",
+		"2 January 15:04",
+		"2 Jan",
+		"2 January",
+		"Jan 2",
+		"January 2",
+		"2 Jan 2006",
+		"2 January 2006",
+		"Jan 2 2006",
+		"January 2 2006",
 	}
 )
 
@@ -204,6 +218,16 @@ func guess(s string) []Guess {
 func guessBadDate(f, i string, d time.Time) []Guess {
 	var lines []string
 
+	// Date might be missing an explicit year, so we fabricate one.
+	curryear := time.Now().Year()
+	fixup := func(t *time.Time) {
+		if t.Year() == 0 {
+			trace("Year 0 probably means the year was missing")
+			*t = t.AddDate(curryear, 0, 0)
+		}
+	}
+	fixup(&d)
+
 	delta, ds := deltaNow(d)
 	wantcal := false
 	if delta > 2*24*time.Hour && delta < 365*24*time.Hour {
@@ -216,6 +240,7 @@ func guessBadDate(f, i string, d time.Time) []Guess {
 			trace("previously parsable date is not parsable: %+v", d)
 			continue
 		}
+		fixup(&t)
 		zone, _ := t.Zone()
 		l := fmt.Sprintf("From %s (%s): %s", zone, loc, t.Local())
 		if !wantcal {
@@ -225,6 +250,7 @@ func guessBadDate(f, i string, d time.Time) []Guess {
 		lines = append(lines, l)
 	}
 	ut, _ := time.ParseInLocation(f, i, time.UTC)
+	fixup(&ut)
 	lines = append(lines, fmt.Sprintf("As UNIX timestamp: %d", ut.Unix()))
 
 	good := 0
