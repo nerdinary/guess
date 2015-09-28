@@ -435,12 +435,15 @@ func calendar(t time.Time) []string {
 		fmt.Sprintf("%s%s %d", strings.Repeat(" ", (20-(len(t.Month().String())+1+4))/2), t.Month(), t.Year()),
 		"Mo Tu We Th Fr Sa Su",
 	}
-	dom := t.Day()
-	today := time.Now().Day()
 
 	ctoday := color.New(color.Bold).Add(color.Underline).SprintFunc()
 	cgiven := color.New(color.BgRed).Add(color.Bold).SprintFunc()
 	csunday := color.New(color.FgMagenta).SprintFunc()
+
+	dom := t.Day()
+	now := time.Now()
+	today := now.Day()
+	currentmonth := t.Year() == now.Year() && t.Month() == now.Month()
 
 	// First day of the given month
 	i := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, t.Location())
@@ -467,7 +470,7 @@ func calendar(t time.Time) []string {
 			switch {
 			case day == dom:
 				days = append(days, cgiven(fmt.Sprintf("%2d", day)))
-			case day == today:
+			case currentmonth && day == today:
 				days = append(days, ctoday(fmt.Sprintf("%2d", day)))
 			case j.Weekday() == time.Sunday:
 				days = append(days, csunday(fmt.Sprintf("%2d", day)))
