@@ -488,13 +488,13 @@ func guessIP(ip net.IP) []Guess {
 		additional = append(additional, "(address does not resolve to a host name)")
 	} else {
 		for _, h := range r {
+			additional = append(additional, fmt.Sprintf("reverse lookup: %s", h))
 			addrs, err := net.LookupHost(h)
-			if err != nil {
-				continue
+			if err == nil {
+				additional = append(additional, fmt.Sprintf("which resolves to: %s", strings.Join(addrs, ", ")))
+			} else {
+				additional = append(additional, "(which does not forward-resolve to anything)")
 			}
-			additional = append(additional,
-				fmt.Sprintf("reverse lookup: %s", h),
-				fmt.Sprintf("which resolves to: %s", strings.Join(addrs, ", ")))
 		}
 	}
 	return []Guess{{
