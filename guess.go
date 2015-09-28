@@ -41,8 +41,10 @@ var (
 		"2006-01-02 15:04 MST",
 		"2006/01/02 15:04:05.999999999 MST",
 		"2006/01/02-15:04:05.999999999 MST",
+		"Mon Jan 2 15:04:05 2006 -0700", // As used e.g. by "git show"
 	}
 	badTZformats = []string{
+		// Time zone or offset missing
 		time.ANSIC,
 		"Jan _2 2006 15:04:05",
 		"2006-01-02 15:04:05",
@@ -53,12 +55,19 @@ var (
 		"2006/01/02 15:04:05.999999999",
 		"2006/01/02-15:04:05.999999999",
 		"20060102150405",
+		// No time nor time zone given
+		"2006-01-02",
+		"2006/01/02",
+		"01/02/2006",
+		"02/01/2006",
+		// Year missing
 		"Jan _2 15:04:05",
 		"January _2 15:04:05",
 		"2 Jan 15:04:05",
 		"2 January 15:04:05",
 		"2 Jan 15:04",
 		"2 January 15:04",
+		// Year and time missing
 		"2 Jan",
 		"2 January",
 		"Jan 2",
