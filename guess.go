@@ -37,14 +37,21 @@ var (
 		time.RubyDate,
 		time.UnixDate,
 		"2006-01-02 15:04:05.999999999 -0700 MST", // as used by time.Time.String() method
+		"2006-01-02 15:04:05 MST",
+		"2006-01-02 15:04 MST",
+		"2006/01/02 15:04:05.999999999 MST",
+		"2006/01/02-15:04:05.999999999 MST",
 	}
 	badTZformats = []string{
 		time.ANSIC,
 		"Jan _2 2006 15:04:05",
 		"2006-01-02 15:04:05",
+		"2006-01-02 15:04",
 		"2006-01-02T15:04:05",
 		"01/02/2006 15:04:05",
 		"02/01/2006 15:04:05",
+		"2006/01/02 15:04:05.999999999",
+		"2006/01/02-15:04:05.999999999",
 	}
 )
 
@@ -122,6 +129,25 @@ func guess(s string) []Guess {
 		if err != nil {
 			trace("error parsing as date: %v", err)
 			continue
+		}
+		// Special treatment for formats that specify a timezone
+		// identifier but no explicit offset, in which case
+		// time.Parse() simply creates an artificial time zone with
+		// zero offset; knowing which time zones are interesting, we
+		// can do better here, e.g. we successfully parse
+		// 2015-09-26 11:29:43 PDT as 2015-09-26 11:29:43 -0700 PDT.
+		z, o := d.Zone()
+		if o == 0 {
+			for _, loc := range TZs {
+				cand, _ := time.Now().In(loc).Zone()
+				if z != cand {
+					continue
+				}
+				d, err = time.ParseInLocation(format, s, loc)
+				if err != nil {
+					panic(err)
+				}
+			}
 		}
 		trace("successfully parsed date %q as %s", s, d)
 		gg := dateGuess(d)
