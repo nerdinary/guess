@@ -48,3 +48,12 @@ See it in action:
 
 Take a look at the shell script `g` for how to call this program with flexible
 input options.
+
+Build
+-----
+
+The simple way to download the dependencies and compile the tool is this:
+
+    export GOPATH=${GOPATH:-$HOME/src/go}
+    go get
+    go build
