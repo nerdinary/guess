@@ -39,10 +39,15 @@ var (
 		time.UnixDate,
 		"2006-01-02 15:04:05.999999999 -0700 MST", // as used by time.Time.String() method
 		"2006-01-02 15:04:05 MST",
+		"2006-01-02 15:04:05 -0700",
 		"2006-01-02 15:04 MST",
 		"2006/01/02 15:04:05.999999999 MST",
 		"2006/01/02-15:04:05.999999999 MST",
 		"Mon Jan 2 15:04:05 2006 -0700", // As used e.g. by "git show"
+		"Jan 2, 2006 15:04:05 MST",
+		"Mon Jan 2, 2006 15:04:05 MST",
+		"Jan 2, 2006 15:04 MST",
+		"Mon Jan 2, 2006 15:04 MST",
 	}
 	badTZformats = []string{
 		// Time zone or offset missing
