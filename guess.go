@@ -23,7 +23,7 @@ var (
 		"America/Los_Angeles,America/New_York,UTC,Europe/Berlin,Asia/Dubai,Asia/Singapore,Australia/Sydney",
 		"Timezones that to convert to/from for timestamps and dates")
 	alwaysCalendar = flag.Bool("calendar", false, "Always display a calendar alongside dates")
-	pangoMarkup    = flag.Bool("pango_markup", false, "Use Pango markup instead of ANSI color codes")
+	pangoMarkup    = flag.Bool("pango_markup", false, "Use Pango markup instead of ANSI color sequences")
 )
 
 var (
@@ -109,7 +109,7 @@ func trace(s string, args ...interface{}) {
 	}
 }
 
-// For highlighting important part using ANSI color sequences or via Pango markup
+// For highlighting important parts via ANSI color sequences or Pango markup
 var cToday, cGiven, cSunday, cHighlight func(a ...interface{}) string
 
 type Guess struct {
@@ -476,8 +476,10 @@ func differentTZs(t time.Time) []string {
 //    21 22 23 24 25 26 27
 //    28 29 30
 func calendar(t time.Time) []string {
+	pad := strings.Repeat(" ", (20-(len(t.Month().String())+1+4))/2)
+	caption := cHighlight(fmt.Sprintf("%s%s %d", pad, t.Month(), t.Year()))
 	lines := []string{
-		cHighlight(fmt.Sprintf("%s%s %d", strings.Repeat(" ", (20-(len(t.Month().String())+1+4))/2), t.Month(), t.Year())),
+		caption,
 		"Mo Tu We Th Fr Sa Su",
 	}
 
