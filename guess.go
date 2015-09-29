@@ -23,6 +23,7 @@ var (
 		"America/Los_Angeles,America/New_York,UTC,Europe/Berlin,Asia/Dubai,Asia/Singapore,Australia/Sydney",
 		"Timezones that to convert to/from for timestamps and dates")
 	alwaysCalendar = flag.Bool("calendar", false, "Always display a calendar alongside dates")
+	pangoMarkup    = flag.Bool("pango_markup", false, "Use Pango markup instead of ANSI color codes")
 )
 
 var (
@@ -108,6 +109,9 @@ func trace(s string, args ...interface{}) {
 	}
 }
 
+// For highlighting important part using ANSI color sequences or via Pango markup
+var cToday, cGiven, cSunday, cHighlight func(a ...interface{}) string
+
 type Guess struct {
 	guess, comment string
 	additional     []string
@@ -129,8 +133,7 @@ func (g *Guess) String() string {
 	if *verbose {
 		v = fmt.Sprintf("[goodness: %d, source: %s]\n", g.goodness, g.source)
 	}
-	highlight := color.New(color.Bold).SprintFunc()
-	return v + highlight(t) + c + "\n" + a
+	return v + cHighlight(t) + c + "\n" + a
 }
 
 type ByGoodness []Guess
@@ -474,13 +477,9 @@ func differentTZs(t time.Time) []string {
 //    28 29 30
 func calendar(t time.Time) []string {
 	lines := []string{
-		fmt.Sprintf("%s%s %d", strings.Repeat(" ", (20-(len(t.Month().String())+1+4))/2), t.Month(), t.Year()),
+		cHighlight(fmt.Sprintf("%s%s %d", strings.Repeat(" ", (20-(len(t.Month().String())+1+4))/2), t.Month(), t.Year())),
 		"Mo Tu We Th Fr Sa Su",
 	}
-
-	ctoday := color.New(color.Bold).Add(color.Underline).SprintFunc()
-	cgiven := color.New(color.BgRed).Add(color.Bold).SprintFunc()
-	csunday := color.New(color.FgMagenta).SprintFunc()
 
 	dom := t.Day()
 	now := time.Now()
@@ -511,11 +510,11 @@ func calendar(t time.Time) []string {
 			day := j.Day()
 			switch {
 			case day == dom:
-				days = append(days, cgiven(fmt.Sprintf("%2d", day)))
+				days = append(days, cGiven(fmt.Sprintf("%2d", day)))
 			case currentmonth && day == today:
-				days = append(days, ctoday(fmt.Sprintf("%2d", day)))
+				days = append(days, cToday(fmt.Sprintf("%2d", day)))
 			case j.Weekday() == time.Sunday:
-				days = append(days, csunday(fmt.Sprintf("%2d", day)))
+				days = append(days, cSunday(fmt.Sprintf("%2d", day)))
 			default:
 				days = append(days, fmt.Sprintf("%2d", day))
 			}
@@ -597,6 +596,24 @@ func main() {
 			}
 			TZs = append(TZs, loc)
 		}
+	}
+
+	if *pangoMarkup {
+		cHighlight = func(a ...interface{}) string {
+			return "<span font_weight='bold'>" + fmt.Sprint(a...) + "</span>"
+		}
+		cToday = func(a ...interface{}) string {
+			return "<span font_weight='bold' bgcolor='#c0c0c0' underline='single'>" + fmt.Sprint(a...) + "</span>"
+		}
+		cGiven = func(a ...interface{}) string {
+			return "<span font_weight='bold' bgcolor='#EB3636'>" + fmt.Sprint(a...) + "</span>"
+		}
+		cSunday = func(a ...interface{}) string { return "<span color='grey'>" + fmt.Sprint(a...) + "</span>" }
+	} else {
+		cHighlight = color.New(color.Bold).SprintFunc()
+		cToday = color.New(color.Bold).Add(color.Underline).SprintFunc()
+		cGiven = color.New(color.BgRed).Add(color.Bold).SprintFunc()
+		cSunday = color.New(color.FgMagenta).SprintFunc()
 	}
 
 	input := strings.TrimSpace(flag.Arg(0))

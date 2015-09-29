@@ -1,0 +1,5 @@
+#!/bin/sh
+q="$*"
+[ -z "$q" ] && q="$(xclip -o)"
+msg="$($(dirname $0)/guess --pango_markup "$q")"
+notify-send --expire-time=3500 "Guess: $q" "$msg"

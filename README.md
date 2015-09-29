@@ -47,7 +47,8 @@ See it in action:
         From AEST (Australia/Sydney): 2015-09-25 15:00:00 +1000 AEST      28 29 30
 
 Take a look at the shell script `g` for how to call this program with flexible
-input options.
+input options. The script `g-notify` demonstrates how you can have the program
+appear as a desktop notification.
 
 Build
 -----
