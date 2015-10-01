@@ -174,7 +174,7 @@ func guess(s string) []Guess {
 		z, o := d.Zone()
 		if o == 0 {
 			for _, loc := range TZs {
-				cand, _ := time.Now().In(loc).Zone()
+				cand, _ := d.In(loc).Zone()
 				if z != cand {
 					continue
 				}
